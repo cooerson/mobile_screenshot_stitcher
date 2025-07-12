@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>手机截图智能拼接工具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            padding: 30px;
+        }
+
+        .upload-area {
+            background: #f8f9fa;
+            border: 3px dashed #dee2e6;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-area:hover, .upload-area.dragover {
+            border-color: #667eea;
+            background: #e8f2ff;
+        }
+
+        .upload-icon {
+            font-size: 4em;
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        .upload-text {
+            font-size: 1.3em;
+            color: #6c757d;
+            margin-bottom: 10px;
+        }
+
+        .upload-hint {
+            font-size: 0.9em;
+            color: #adb5bd;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .images-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .image-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+
+        .image-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        }
+
+        .image-preview {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            border: 2px solid #e9ecef;
+        }
+
+        .image-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .image-name {
+            font-weight: 600;
+            color: #495057;
+            font-size: 0.9em;
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .image-size {
+            color: #6c757d;
+            font-size: 0.8em;
+        }
+
+        .image-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8em;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a6fd8;
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .btn-warning:hover {
+            background: #e0a800;
+        }
+
+        .controls-panel {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+
+        .control-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .control-label {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+        }
+
+        .control-input {
+            padding: 10px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 0.9em;
+            transition: border-color 0.3s ease;
+        }
+
+        .control-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .slider {
+            flex: 1;
+            height: 6px;
+            border-radius: 3px;
+            background: #e9ecef;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+        }
+
+        .slider-value {
+            min-width: 50px;
+            text-align: center;
+            font-weight: 600;
+            color: #667eea;
+            font-size: 0.9em;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .progress-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            display: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            text-align: center;
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+
+        .result-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            display: none;
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .result-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .result-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-item {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .stat-label {
+            font-size: 0.8em;
+            color: #6c757d;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .result-image-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .result-image {
+            max-width: 100%;
+            max-height: 600px;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            border: 2px solid #e9ecef;
+        }
+
+        .result-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .message {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .main-content {
+                padding: 20px;
+            }
+            
+            .images-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .control-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📱 手机截图智能拼接工具</h1>
+            <p>去头尾 · 找重合 · 智能拼接 · 还原头尾</p>
+        </div>
+
+        <div class="main-content">
+            <!-- 消息提示 -->
+            <div id="message" class="message"></div>
+
+            <!-- 上传区域 -->
+            <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+                <div class="upload-icon">📸</div>
+                <div class="upload-text">点击上传或拖拽手机截图</div>
+                <div class="upload-hint">支持多张图片，自动检测重合部分进行拼接</div>
+                <input type="file" id="fileInput" class="file-input" multiple accept="image/*">
+            </div>
+
+            <!-- 图片网格 -->
+            <div id="imagesGrid" class="images-grid"></div>
+
+            <!-- 控制面板 -->
+            <div class="controls-panel">
+                <div class="control-row">
+                    <div class="control-group">
+                        <label class="control-label">相似度阈值</label>
+                        <div class="slider-container">
+                            <input type="range" id="similarityThreshold" class="slider" min="0.6" max="0.95" step="0.05" value="0.8">
+                            <span id="similarityValue" class="slider-value">80%</span>
+                        </div>
+                        <small style="color: #6c757d; font-size: 0.8em;">检测重合部分的敏感度</small>
+                    </div>
+
+                                    <div class="control-group">
+                    <label class="control-label">检测范围</label>
+                    <div class="slider-container">
+                        <input type="range" id="detectionRange" class="slider" min="0.1" max="0.4" step="0.05" value="0.25">
+                        <span id="detectionValue" class="slider-value">25%</span>
+                    </div>
+                    <small style="color: #6c757d; font-size: 0.8em;">在图片边缘检测重合的范围（头尾检测优先）</small>
+                </div>
+
+                    <div class="control-group">
+                        <label class="control-label">输出质量</label>
+                        <select id="outputQuality" class="control-input">
+                            <option value="0.9">高质量 (90%)</option>
+                            <option value="0.8" selected>标准质量 (80%)</option>
+                            <option value="0.6">压缩质量 (60%)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button id="stitchBtn" class="btn btn-primary" disabled>
+                        <span class="btn-text">开始智能拼接</span>
+                        <span class="loading" style="display: none;"></span>
+                    </button>
+                    <button id="clearBtn" class="btn btn-secondary">清空所有</button>
+                    <button id="sortBtn" class="btn btn-warning">自动排序</button>
+                    <button id="previewBtn" class="btn btn-success" disabled>预览拼接</button>
+                </div>
+            </div>
+
+            <!-- 进度条 -->
+            <div id="progressSection" class="progress-section">
+                <div class="progress-bar">
+                    <div id="progressFill" class="progress-fill"></div>
+                </div>
+                <div id="progressText" class="progress-text">正在分析图片...</div>
+            </div>
+
+            <!-- 结果区域 -->
+            <div id="resultSection" class="result-section">
+                <div class="result-header">
+                    <div class="result-title">拼接结果</div>
+                    <button id="downloadBtn" class="btn btn-success">下载图片</button>
+                </div>
+
+                <div class="result-stats">
+                    <div class="stat-item">
+                        <div class="stat-label">最终尺寸</div>
+                        <div id="resultSize" class="stat-value">-</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">拼接次数</div>
+                        <div id="stitchCount" class="stat-value">-</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">处理时间</div>
+                        <div id="processTime" class="stat-value">-</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">头尾检测</div>
+                        <div id="headTailCount" class="stat-value">-</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">重叠检测</div>
+                        <div id="overlapCount" class="stat-value">-</div>
+                    </div>
+                </div>
+
+                <div class="result-image-container">
+                    <img id="resultImage" class="result-image" alt="拼接结果">
+                </div>
+
+                <div class="result-actions">
+                    <button id="resetBtn" class="btn btn-secondary">重新开始</button>
+                    <button id="copyBtn" class="btn btn-primary">复制到剪贴板</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>© 2024 手机截图智能拼接工具 - 让长图拼接变得简单</p>
+        </div>
+    </div>
+
+    <script>
+        class MobileScreenshotStitcher {
+            constructor() {
+                this.images = [];
+                this.resultCanvas = null;
+                this.initEventListeners();
+            }
+
+            initEventListeners() {
+                // 文件上传
+                const fileInput = document.getElementById('fileInput');
+                const uploadArea = document.getElementById('uploadArea');
+
+                fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
+                
+                // 拖拽上传
+                uploadArea.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    uploadArea.classList.add('dragover');
+                });
+
+                uploadArea.addEventListener('dragleave', () => {
+                    uploadArea.classList.remove('dragover');
+                });
+
+                uploadArea.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    uploadArea.classList.remove('dragover');
+                    this.handleFileDrop(e);
+                });
+
+                // 控制选项
+                document.getElementById('similarityThreshold').addEventListener('input', (e) => {
+                    document.getElementById('similarityValue').textContent = Math.round(e.target.value * 100) + '%';
+                });
+
+                document.getElementById('detectionRange').addEventListener('input', (e) => {
+                    document.getElementById('detectionValue').textContent = Math.round(e.target.value * 100) + '%';
+                });
+
+                // 按钮事件
+                document.getElementById('stitchBtn').addEventListener('click', () => this.stitchImages());
+                document.getElementById('clearBtn').addEventListener('click', () => this.clearAll());
+                document.getElementById('sortBtn').addEventListener('click', () => this.autoSort());
+                document.getElementById('previewBtn').addEventListener('click', () => this.previewStitch());
+                document.getElementById('downloadBtn').addEventListener('click', () => this.downloadResult());
+                document.getElementById('resetBtn').addEventListener('click', () => this.reset());
+                document.getElementById('copyBtn').addEventListener('click', () => this.copyToClipboard());
+            }
+
+            handleFileSelect(event) {
+                const files = Array.from(event.target.files);
+                this.processFiles(files);
+            }
+
+            handleFileDrop(event) {
+                const files = Array.from(event.dataTransfer.files);
+                this.processFiles(files);
+            }
+
+            processFiles(files) {
+                const imageFiles = files.filter(file => file.type.startsWith('image/'));
+                
+                if (imageFiles.length === 0) {
+                    this.showMessage('请选择图片文件', 'error');
+                    return;
+                }
+
+                imageFiles.forEach(file => this.loadImage(file));
+            }
+
+            loadImage(file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        this.images.push({
+                            file: file,
+                            image: img,
+                            name: file.name,
+                            size: file.size,
+                            width: img.width,
+                            height: img.height
+                        });
+                        this.updateImagesGrid();
+                        this.updateButtons();
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+
+            updateImagesGrid() {
+                const grid = document.getElementById('imagesGrid');
+                grid.innerHTML = '';
+
+                this.images.forEach((imageData, index) => {
+                    const card = document.createElement('div');
+                    card.className = 'image-card';
+                    card.innerHTML = `
+                        <img src="${imageData.image.src}" class="image-preview" alt="${imageData.name}">
+                        <div class="image-info">
+                            <div class="image-name" title="${imageData.name}">${imageData.name}</div>
+                            <div class="image-size">${this.formatFileSize(imageData.size)}</div>
+                        </div>
+                        <div class="image-actions">
+                            <button class="btn btn-danger" onclick="stitcher.removeImage(${index})">删除</button>
+                            <button class="btn btn-secondary" onclick="stitcher.moveImage(${index}, -1)" ${index === 0 ? 'disabled' : ''}>上移</button>
+                            <button class="btn btn-secondary" onclick="stitcher.moveImage(${index}, 1)" ${index === this.images.length - 1 ? 'disabled' : ''}>下移</button>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+            }
+
+            removeImage(index) {
+                this.images.splice(index, 1);
+                this.updateImagesGrid();
+                this.updateButtons();
+            }
+
+            moveImage(index, direction) {
+                const newIndex = index + direction;
+                if (newIndex >= 0 && newIndex < this.images.length) {
+                    const temp = this.images[index];
+                    this.images[index] = this.images[newIndex];
+                    this.images[newIndex] = temp;
+                    this.updateImagesGrid();
+                }
+            }
+
+            autoSort() {
+                if (this.images.length < 2) {
+                    this.showMessage('至少需要2张图片才能排序', 'error');
+                    return;
+                }
+
+                // 按文件名中的数字排序
+                this.images.sort((a, b) => {
+                    const aNum = parseInt(a.name.match(/\d+/)?.[0] || '0');
+                    const bNum = parseInt(b.name.match(/\d+/)?.[0] || '0');
+                    return aNum - bNum;
+                });
+
+                this.updateImagesGrid();
+                this.showMessage('图片已按文件名自动排序', 'success');
+            }
+
+            updateButtons() {
+                const stitchBtn = document.getElementById('stitchBtn');
+                const previewBtn = document.getElementById('previewBtn');
+                
+                stitchBtn.disabled = this.images.length < 2;
+                previewBtn.disabled = this.images.length < 2;
+            }
+
+            async stitchImages() {
+                if (this.images.length < 2) {
+                    this.showMessage('至少需要2张图片才能进行拼接', 'error');
+                    return;
+                }
+
+                const startTime = Date.now();
+                this.showProgress('正在分析图片结构...', 10);
+
+                try {
+                    this.showProgress('正在检测重合部分...', 30);
+                    
+                    // 智能拼接算法
+                    const result = await this.smartStitch();
+                    
+                    this.showProgress('正在生成最终图片...', 80);
+                    
+                    // 显示结果
+                    this.showResult(result, Date.now() - startTime);
+                    
+                    this.showProgress('拼接完成！', 100);
+                    setTimeout(() => this.hideProgress(), 1000);
+
+                } catch (error) {
+                    this.showMessage('拼接失败: ' + error.message, 'error');
+                    this.hideProgress();
+                }
+            }
+
+            async smartStitch() {
+                const similarityThreshold = parseFloat(document.getElementById('similarityThreshold').value);
+                const detectionRange = parseFloat(document.getElementById('detectionRange').value);
+                
+                // 按高度排序，确保拼接顺序
+                const sortedImages = [...this.images].sort((a, b) => a.height - b.height);
+                
+                let resultCanvas = document.createElement('canvas');
+                let resultCtx = resultCanvas.getContext('2d');
+                
+                // 从第一张图片开始
+                let currentImage = sortedImages[0].image;
+                resultCanvas.width = currentImage.width;
+                resultCanvas.height = currentImage.height;
+                resultCtx.drawImage(currentImage, 0, 0);
+                
+                let stitchCount = 0;
+                let overlapCount = 0;
+                let headTailCount = 0;
+                
+                for (let i = 1; i < sortedImages.length; i++) {
+                    const nextImage = sortedImages[i].image;
+                    
+                    // 首先尝试头尾相同检测
+                    const headTailMatch = this.findHeadTailMatch(resultCanvas, nextImage, similarityThreshold);
+                    
+                    if (headTailMatch) {
+                        headTailCount++;
+                        
+                        // 创建新的画布，包含拼接后的图片
+                        const newCanvas = document.createElement('canvas');
+                        const newCtx = newCanvas.getContext('2d');
+                        
+                        newCanvas.width = Math.max(resultCanvas.width, nextImage.width);
+                        newCanvas.height = resultCanvas.height + nextImage.height - headTailMatch.headHeight - headTailMatch.tailHeight;
+                        
+                        // 绘制上半部分（当前结果，去掉尾部）
+                        newCtx.drawImage(
+                            resultCanvas, 
+                            0, 0, resultCanvas.width, resultCanvas.height - headTailMatch.tailHeight,
+                            0, 0, resultCanvas.width, resultCanvas.height - headTailMatch.tailHeight
+                        );
+                        
+                        // 绘制下半部分（新图片，去掉头部）
+                        newCtx.drawImage(
+                            nextImage, 
+                            0, headTailMatch.headHeight, nextImage.width, nextImage.height - headTailMatch.headHeight,
+                            0, resultCanvas.height - headTailMatch.tailHeight, nextImage.width, nextImage.height - headTailMatch.headHeight
+                        );
+                        
+                        resultCanvas = newCanvas;
+                        resultCtx = newCtx;
+                        stitchCount++;
+                        
+                        this.showProgress(`正在头尾拼接第 ${i + 1} 张图片...`, 30 + (i / sortedImages.length) * 50);
+                    } else {
+                        // 如果没有找到头尾匹配，尝试普通重叠检测
+                        const overlap = this.findOverlap(resultCanvas, nextImage, detectionRange, similarityThreshold);
+                        
+                        if (overlap) {
+                            overlapCount++;
+                            
+                            // 创建新的画布，包含拼接后的图片
+                            const newCanvas = document.createElement('canvas');
+                            const newCtx = newCanvas.getContext('2d');
+                            
+                            newCanvas.width = Math.max(resultCanvas.width, nextImage.width);
+                            newCanvas.height = resultCanvas.height + nextImage.height - overlap.height;
+                            
+                            // 绘制上半部分（当前结果）
+                            newCtx.drawImage(resultCanvas, 0, 0);
+                            
+                            // 绘制下半部分（新图片，跳过重叠部分）
+                            newCtx.drawImage(
+                                nextImage, 
+                                0, overlap.top, nextImage.width, nextImage.height - overlap.top,
+                                0, resultCanvas.height, nextImage.width, nextImage.height - overlap.top
+                            );
+                            
+                            resultCanvas = newCanvas;
+                            resultCtx = newCtx;
+                            stitchCount++;
+                            
+                            this.showProgress(`正在重叠拼接第 ${i + 1} 张图片...`, 30 + (i / sortedImages.length) * 50);
+                        } else {
+                            // 如果没有找到重叠，直接拼接
+                            const newCanvas = document.createElement('canvas');
+                            const newCtx = newCanvas.getContext('2d');
+                            
+                            newCanvas.width = Math.max(resultCanvas.width, nextImage.width);
+                            newCanvas.height = resultCanvas.height + nextImage.height;
+                            
+                            newCtx.drawImage(resultCanvas, 0, 0);
+                            newCtx.drawImage(nextImage, 0, resultCanvas.height);
+                            
+                            resultCanvas = newCanvas;
+                            resultCtx = newCtx;
+                            stitchCount++;
+                            
+                            this.showProgress(`正在直接拼接第 ${i + 1} 张图片...`, 30 + (i / sortedImages.length) * 50);
+                        }
+                    }
+                }
+                
+                return {
+                    canvas: resultCanvas,
+                    stitchCount: stitchCount,
+                    overlapCount: overlapCount,
+                    headTailCount: headTailCount
+                };
+            }
+
+            findHeadTailMatch(canvas1, image2, threshold) {
+                const img1Data = canvas1.getContext('2d').getImageData(0, 0, canvas1.width, canvas1.height);
+                const img2Data = this.getImageData(image2);
+                
+                // 检测头部相同部分
+                const headMatch = this.findHeadMatch(img1Data, img2Data, threshold);
+                
+                // 检测尾部相同部分
+                const tailMatch = this.findTailMatch(img1Data, img2Data, threshold);
+                
+                // 如果头部和尾部都找到匹配，返回结果
+                if (headMatch && tailMatch) {
+                    return {
+                        headHeight: headMatch.height,
+                        tailHeight: tailMatch.height,
+                        headSimilarity: headMatch.similarity,
+                        tailSimilarity: tailMatch.similarity
+                    };
+                }
+                
+                return null;
+            }
+
+            findHeadMatch(img1Data, img2Data, threshold) {
+                const maxHeadHeight = Math.min(img1Data.height, img2Data.height) * 0.3; // 最多检测30%的头部
+                
+                for (let headHeight = 10; headHeight <= maxHeadHeight; headHeight += 2) {
+                    const similarity = this.calculateSimilarity(
+                        img1Data, 
+                        img2Data, 
+                        0, 
+                        headHeight,
+                        0,
+                        headHeight
+                    );
+                    
+                    if (similarity >= threshold) {
+                        return {
+                            height: headHeight,
+                            similarity: similarity
+                        };
+                    }
+                }
+                
+                return null;
+            }
+
+            findTailMatch(img1Data, img2Data, threshold) {
+                const maxTailHeight = Math.min(img1Data.height, img2Data.height) * 0.3; // 最多检测30%的尾部
+                
+                for (let tailHeight = 10; tailHeight <= maxTailHeight; tailHeight += 2) {
+                    const similarity = this.calculateSimilarity(
+                        img1Data, 
+                        img2Data, 
+                        img1Data.height - tailHeight, 
+                        tailHeight,
+                        img2Data.height - tailHeight,
+                        tailHeight
+                    );
+                    
+                    if (similarity >= threshold) {
+                        return {
+                            height: tailHeight,
+                            similarity: similarity
+                        };
+                    }
+                }
+                
+                return null;
+            }
+
+            findOverlap(canvas1, image2, detectionRange, threshold) {
+                const img1Data = canvas1.getContext('2d').getImageData(0, 0, canvas1.width, canvas1.height);
+                const img2Data = this.getImageData(image2);
+                
+                const range = Math.floor(canvas1.height * detectionRange);
+                
+                // 在底部检测区域寻找匹配
+                for (let offset = 0; offset <= range; offset += 3) {
+                    const similarity = this.calculateSimilarity(
+                        img1Data, 
+                        img2Data, 
+                        canvas1.height - range + offset, 
+                        range - offset,
+                        0,
+                        range - offset
+                    );
+                    
+                    if (similarity >= threshold) {
+                        return {
+                            top: range - offset,
+                            height: range - offset
+                        };
+                    }
+                }
+                
+                return null;
+            }
+
+            getImageData(image) {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = image.width;
+                canvas.height = image.height;
+                ctx.drawImage(image, 0, 0);
+                return ctx.getImageData(0, 0, canvas.width, canvas.height);
+            }
+
+            calculateSimilarity(img1Data, img2Data, y1, height1, y2, height2) {
+                const width = Math.min(img1Data.width, img2Data.width);
+                const height = Math.min(height1, height2);
+                
+                if (height <= 0) return 0;
+                
+                let totalDiff = 0;
+                let totalPixels = width * height;
+                
+                // 采样计算，提高性能
+                const sampleStep = Math.max(1, Math.floor(totalPixels / 10000));
+                let sampledPixels = 0;
+                
+                for (let y = 0; y < height; y += sampleStep) {
+                    for (let x = 0; x < width; x += sampleStep) {
+                        const idx1 = ((y1 + y) * img1Data.width + x) * 4;
+                        const idx2 = ((y2 + y) * img2Data.width + x) * 4;
+                        
+                        const diffR = Math.abs(img1Data.data[idx1] - img2Data.data[idx2]);
+                        const diffG = Math.abs(img1Data.data[idx1 + 1] - img2Data.data[idx2 + 1]);
+                        const diffB = Math.abs(img1Data.data[idx1 + 2] - img2Data.data[idx2 + 2]);
+                        
+                        totalDiff += (diffR + diffG + diffB) / 3;
+                        sampledPixels++;
+                    }
+                }
+                
+                if (sampledPixels === 0) return 0;
+                
+                const averageDiff = totalDiff / sampledPixels;
+                return 1 - (averageDiff / 255);
+            }
+
+            previewStitch() {
+                if (this.images.length < 2) {
+                    this.showMessage('至少需要2张图片才能预览', 'error');
+                    return;
+                }
+
+                this.showMessage('预览功能开发中...', 'success');
+            }
+
+            showResult(result, processTime) {
+                const resultSection = document.getElementById('resultSection');
+                const resultImage = document.getElementById('resultImage');
+                const resultSize = document.getElementById('resultSize');
+                const stitchCount = document.getElementById('stitchCount');
+                const processTimeEl = document.getElementById('processTime');
+                const headTailCount = document.getElementById('headTailCount');
+                const overlapCount = document.getElementById('overlapCount');
+                
+                resultImage.src = result.canvas.toDataURL('image/jpeg', parseFloat(document.getElementById('outputQuality').value));
+                resultSize.textContent = `${result.canvas.width} × ${result.canvas.height}`;
+                stitchCount.textContent = result.stitchCount;
+                processTimeEl.textContent = `${processTime}ms`;
+                headTailCount.textContent = result.headTailCount;
+                overlapCount.textContent = result.overlapCount;
+                
+                resultSection.style.display = 'block';
+                resultSection.scrollIntoView({ behavior: 'smooth' });
+                
+                this.resultCanvas = result.canvas;
+            }
+
+            downloadResult() {
+                if (!this.resultCanvas) return;
+                
+                const link = document.createElement('a');
+                link.download = `stitched_screenshot_${Date.now()}.jpg`;
+                link.href = this.resultCanvas.toDataURL('image/jpeg', parseFloat(document.getElementById('outputQuality').value));
+                link.click();
+            }
+
+            async copyToClipboard() {
+                if (!this.resultCanvas) return;
+                
+                try {
+                    const blob = await new Promise(resolve => {
+                        this.resultCanvas.toBlob(resolve, 'image/png');
+                    });
+                    
+                    await navigator.clipboard.write([
+                        new ClipboardItem({
+                            'image/png': blob
+                        })
+                    ]);
+                    
+                    this.showMessage('图片已复制到剪贴板', 'success');
+                } catch (error) {
+                    this.showMessage('复制失败，请手动下载', 'error');
+                }
+            }
+
+            showProgress(text, percentage) {
+                const progressSection = document.getElementById('progressSection');
+                const progressFill = document.getElementById('progressFill');
+                const progressText = document.getElementById('progressText');
+                
+                progressSection.style.display = 'block';
+                progressFill.style.width = percentage + '%';
+                progressText.textContent = text;
+            }
+
+            hideProgress() {
+                document.getElementById('progressSection').style.display = 'none';
+            }
+
+            showMessage(message, type) {
+                const messageEl = document.getElementById('message');
+                messageEl.textContent = message;
+                messageEl.className = `message ${type}`;
+                messageEl.style.display = 'block';
+                setTimeout(() => messageEl.style.display = 'none', 3000);
+            }
+
+            clearAll() {
+                this.images = [];
+                this.updateImagesGrid();
+                this.updateButtons();
+                document.getElementById('resultSection').style.display = 'none';
+                this.hideProgress();
+            }
+
+            reset() {
+                this.clearAll();
+                document.getElementById('fileInput').value = '';
+            }
+
+            formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+        }
+
+        // 初始化应用
+        const stitcher = new MobileScreenshotStitcher();
+    </script>
+</body>
+</html> 
