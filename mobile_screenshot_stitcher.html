@@ -472,28 +472,61 @@
                     <div class="control-group">
                         <label class="control-label">相似度阈值</label>
                         <div class="slider-container">
-                            <input type="range" id="similarityThreshold" class="slider" min="0.6" max="0.95" step="0.05" value="0.8">
-                            <span id="similarityValue" class="slider-value">80%</span>
+                            <input type="range" id="similarityThreshold" class="slider" min="0.6" max="0.95" step="0.05" value="0.95">
+                            <span id="similarityValue" class="slider-value">95%</span>
                         </div>
                         <small style="color: #6c757d; font-size: 0.8em;">检测重合部分的敏感度</small>
                     </div>
 
-                                    <div class="control-group">
-                    <label class="control-label">检测范围</label>
-                    <div class="slider-container">
-                        <input type="range" id="detectionRange" class="slider" min="0.1" max="0.4" step="0.05" value="0.25">
-                        <span id="detectionValue" class="slider-value">25%</span>
+                    <div class="control-group">
+                        <label class="control-label">检测范围</label>
+                        <div class="slider-container">
+                            <input type="range" id="detectionRange" class="slider" min="0.1" max="0.4" step="0.05" value="0.3">
+                            <span id="detectionValue" class="slider-value">30%</span>
+                        </div>
+                        <small style="color: #6c757d; font-size: 0.8em;">在图片边缘检测重合的范围</small>
                     </div>
-                    <small style="color: #6c757d; font-size: 0.8em;">在图片边缘检测重合的范围（头尾检测优先）</small>
-                </div>
 
                     <div class="control-group">
                         <label class="control-label">输出质量</label>
                         <select id="outputQuality" class="control-input">
+                            <option value="1.0" selected>最高质量 (100%)</option>
                             <option value="0.9">高质量 (90%)</option>
-                            <option value="0.8" selected>标准质量 (80%)</option>
+                            <option value="0.8">标准质量 (80%)</option>
                             <option value="0.6">压缩质量 (60%)</option>
                         </select>
+                    </div>
+                </div>
+
+                <div class="control-row">
+                    <div class="control-group">
+                        <label class="control-label">头尾检测模式</label>
+                        <select id="headTailMode" class="control-input">
+                            <option value="auto" selected>自动检测头尾</option>
+                            <option value="manual">手动拼接</option>
+                            <option value="head_only">仅检测头部</option>
+                            <option value="tail_only">仅检测尾部</option>
+                        </select>
+                        <small style="color: #6c757d; font-size: 0.8em;">选择头尾检测和拼接模式</small>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="control-label">头尾检测范围</label>
+                        <div class="slider-container">
+                            <input type="range" id="headTailRange" class="slider" min="0.1" max="0.5" step="0.05" value="0.3">
+                            <span id="headTailRangeValue" class="slider-value">30%</span>
+                        </div>
+                        <small style="color: #6c757d; font-size: 0.8em;">检测头尾相同部分的范围</small>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="control-label">拼接策略</label>
+                        <select id="stitchStrategy" class="control-input">
+                            <option value="smart">智能拼接</option>
+                            <option value="sequential">顺序拼接</option>
+                            <option value="overlap_only" selected>仅重合拼接</option>
+                        </select>
+                        <small style="color: #6c757d; font-size: 0.8em;">选择拼接算法策略</small>
                     </div>
                 </div>
 
@@ -504,7 +537,6 @@
                     </button>
                     <button id="clearBtn" class="btn btn-secondary">清空所有</button>
                     <button id="sortBtn" class="btn btn-warning">自动排序</button>
-                    <button id="previewBtn" class="btn btn-success" disabled>预览拼接</button>
                 </div>
             </div>
 
@@ -537,11 +569,7 @@
                         <div id="processTime" class="stat-value">-</div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-label">头尾检测</div>
-                        <div id="headTailCount" class="stat-value">-</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-label">重叠检测</div>
+                        <div class="stat-label">重合检测</div>
                         <div id="overlapCount" class="stat-value">-</div>
                     </div>
                 </div>
@@ -602,11 +630,14 @@
                     document.getElementById('detectionValue').textContent = Math.round(e.target.value * 100) + '%';
                 });
 
+                document.getElementById('headTailRange').addEventListener('input', (e) => {
+                    document.getElementById('headTailRangeValue').textContent = Math.round(e.target.value * 100) + '%';
+                });
+
                 // 按钮事件
                 document.getElementById('stitchBtn').addEventListener('click', () => this.stitchImages());
                 document.getElementById('clearBtn').addEventListener('click', () => this.clearAll());
                 document.getElementById('sortBtn').addEventListener('click', () => this.autoSort());
-                document.getElementById('previewBtn').addEventListener('click', () => this.previewStitch());
                 document.getElementById('downloadBtn').addEventListener('click', () => this.downloadResult());
                 document.getElementById('resetBtn').addEventListener('click', () => this.reset());
                 document.getElementById('copyBtn').addEventListener('click', () => this.copyToClipboard());
@@ -712,10 +743,8 @@
 
             updateButtons() {
                 const stitchBtn = document.getElementById('stitchBtn');
-                const previewBtn = document.getElementById('previewBtn');
                 
                 stitchBtn.disabled = this.images.length < 2;
-                previewBtn.disabled = this.images.length < 2;
             }
 
             async stitchImages() {
@@ -750,104 +779,97 @@
             async smartStitch() {
                 const similarityThreshold = parseFloat(document.getElementById('similarityThreshold').value);
                 const detectionRange = parseFloat(document.getElementById('detectionRange').value);
+                const headTailMode = document.getElementById('headTailMode').value;
+                const headTailRange = parseFloat(document.getElementById('headTailRange').value);
+                const stitchStrategy = document.getElementById('stitchStrategy').value;
                 
                 // 按高度排序，确保拼接顺序
                 const sortedImages = [...this.images].sort((a, b) => a.height - b.height);
                 
+                let result;
+                
+                if (stitchStrategy === 'smart' && headTailMode !== 'manual') {
+                    this.showProgress('正在检测头尾相同部分...', 20);
+                    
+                    // 检测头尾相同部分
+                    const headTailInfo = this.detectHeadTailSimilarity(sortedImages, similarityThreshold, headTailMode, headTailRange);
+                    
+                    this.showProgress('正在去除头尾相同部分...', 40);
+                    
+                    // 去除头尾相同部分，拼接中间内容
+                    const middleCanvas = this.stitchMiddleContent(sortedImages, headTailInfo, detectionRange, similarityThreshold);
+                    
+                    this.showProgress('正在添加原始头尾...', 70);
+                    
+                    // 添加原始头尾
+                    const finalCanvas = this.addOriginalHeadTail(middleCanvas, sortedImages, headTailInfo);
+                    
+                    result = {
+                        canvas: finalCanvas,
+                        stitchCount: sortedImages.length - 1,
+                        overlapCount: headTailInfo.totalOverlaps,
+                        headTailInfo: headTailInfo
+                    };
+                } else {
+                    // 使用传统拼接方法
+                    this.showProgress('正在使用传统方法拼接...', 30);
+                    result = this.stitchTraditional(sortedImages, detectionRange, similarityThreshold);
+                }
+                
+                return result;
+            }
+
+            stitchTraditional(images, detectionRange, similarityThreshold) {
                 let resultCanvas = document.createElement('canvas');
                 let resultCtx = resultCanvas.getContext('2d');
                 
                 // 从第一张图片开始
-                let currentImage = sortedImages[0].image;
+                let currentImage = images[0].image;
                 resultCanvas.width = currentImage.width;
                 resultCanvas.height = currentImage.height;
                 resultCtx.drawImage(currentImage, 0, 0);
                 
                 let stitchCount = 0;
                 let overlapCount = 0;
-                let headTailCount = 0;
                 
-                for (let i = 1; i < sortedImages.length; i++) {
-                    const nextImage = sortedImages[i].image;
+                for (let i = 1; i < images.length; i++) {
+                    const nextImage = images[i].image;
                     
-                    // 首先尝试头尾相同检测
-                    const headTailMatch = this.findHeadTailMatch(resultCanvas, nextImage, similarityThreshold);
+                    // 检测重叠区域
+                    const overlap = this.findOverlap(resultCanvas, nextImage, detectionRange, similarityThreshold);
                     
-                    if (headTailMatch) {
-                        headTailCount++;
+                    if (overlap) {
+                        overlapCount++;
                         
-                        // 创建新的画布，包含拼接后的图片
                         const newCanvas = document.createElement('canvas');
                         const newCtx = newCanvas.getContext('2d');
                         
                         newCanvas.width = Math.max(resultCanvas.width, nextImage.width);
-                        newCanvas.height = resultCanvas.height + nextImage.height - headTailMatch.headHeight - headTailMatch.tailHeight;
+                        newCanvas.height = resultCanvas.height + nextImage.height - overlap.height;
                         
-                        // 绘制上半部分（当前结果，去掉尾部）
-                        newCtx.drawImage(
-                            resultCanvas, 
-                            0, 0, resultCanvas.width, resultCanvas.height - headTailMatch.tailHeight,
-                            0, 0, resultCanvas.width, resultCanvas.height - headTailMatch.tailHeight
-                        );
-                        
-                        // 绘制下半部分（新图片，去掉头部）
+                        newCtx.drawImage(resultCanvas, 0, 0);
                         newCtx.drawImage(
                             nextImage, 
-                            0, headTailMatch.headHeight, nextImage.width, nextImage.height - headTailMatch.headHeight,
-                            0, resultCanvas.height - headTailMatch.tailHeight, nextImage.width, nextImage.height - headTailMatch.headHeight
+                            0, overlap.top, nextImage.width, nextImage.height - overlap.top,
+                            0, resultCanvas.height, nextImage.width, nextImage.height - overlap.top
                         );
                         
                         resultCanvas = newCanvas;
                         resultCtx = newCtx;
                         stitchCount++;
-                        
-                        this.showProgress(`正在头尾拼接第 ${i + 1} 张图片...`, 30 + (i / sortedImages.length) * 50);
                     } else {
-                        // 如果没有找到头尾匹配，尝试普通重叠检测
-                        const overlap = this.findOverlap(resultCanvas, nextImage, detectionRange, similarityThreshold);
+                        const newCanvas = document.createElement('canvas');
+                        const newCtx = newCanvas.getContext('2d');
                         
-                        if (overlap) {
-                            overlapCount++;
-                            
-                            // 创建新的画布，包含拼接后的图片
-                            const newCanvas = document.createElement('canvas');
-                            const newCtx = newCanvas.getContext('2d');
-                            
-                            newCanvas.width = Math.max(resultCanvas.width, nextImage.width);
-                            newCanvas.height = resultCanvas.height + nextImage.height - overlap.height;
-                            
-                            // 绘制上半部分（当前结果）
-                            newCtx.drawImage(resultCanvas, 0, 0);
-                            
-                            // 绘制下半部分（新图片，跳过重叠部分）
-                            newCtx.drawImage(
-                                nextImage, 
-                                0, overlap.top, nextImage.width, nextImage.height - overlap.top,
-                                0, resultCanvas.height, nextImage.width, nextImage.height - overlap.top
-                            );
-                            
-                            resultCanvas = newCanvas;
-                            resultCtx = newCtx;
-                            stitchCount++;
-                            
-                            this.showProgress(`正在重叠拼接第 ${i + 1} 张图片...`, 30 + (i / sortedImages.length) * 50);
-                        } else {
-                            // 如果没有找到重叠，直接拼接
-                            const newCanvas = document.createElement('canvas');
-                            const newCtx = newCanvas.getContext('2d');
-                            
-                            newCanvas.width = Math.max(resultCanvas.width, nextImage.width);
-                            newCanvas.height = resultCanvas.height + nextImage.height;
-                            
-                            newCtx.drawImage(resultCanvas, 0, 0);
-                            newCtx.drawImage(nextImage, 0, resultCanvas.height);
-                            
-                            resultCanvas = newCanvas;
-                            resultCtx = newCtx;
-                            stitchCount++;
-                            
-                            this.showProgress(`正在直接拼接第 ${i + 1} 张图片...`, 30 + (i / sortedImages.length) * 50);
-                        }
+                        newCanvas.width = Math.max(resultCanvas.width, nextImage.width);
+                        newCanvas.height = resultCanvas.height + nextImage.height;
+                        
+                        newCtx.drawImage(resultCanvas, 0, 0);
+                        newCtx.drawImage(nextImage, 0, resultCanvas.height);
+                        
+                        resultCanvas = newCanvas;
+                        resultCtx = newCtx;
+                        stitchCount++;
                     }
                 }
                 
@@ -855,79 +877,301 @@
                     canvas: resultCanvas,
                     stitchCount: stitchCount,
                     overlapCount: overlapCount,
-                    headTailCount: headTailCount
+                    headTailInfo: null
                 };
             }
 
-            findHeadTailMatch(canvas1, image2, threshold) {
-                const img1Data = canvas1.getContext('2d').getImageData(0, 0, canvas1.width, canvas1.height);
-                const img2Data = this.getImageData(image2);
+            detectHeadTailSimilarity(images, threshold, mode, range) {
+                const info = {
+                    hasSameHead: false,
+                    hasSameTail: false,
+                    headHeight: 0,
+                    tailHeight: 0,
+                    totalOverlaps: 0,
+                    details: []
+                };
+
+                if (images.length < 2) return info;
+
+                // 检测头部相同
+                const firstImage = images[0].image;
+                const lastImage = images[images.length - 1].image;
                 
-                // 检测头部相同部分
-                const headMatch = this.findHeadMatch(img1Data, img2Data, threshold);
-                
-                // 检测尾部相同部分
-                const tailMatch = this.findTailMatch(img1Data, img2Data, threshold);
-                
-                // 如果头部和尾部都找到匹配，返回结果
-                if (headMatch && tailMatch) {
-                    return {
-                        headHeight: headMatch.height,
-                        tailHeight: tailMatch.height,
-                        headSimilarity: headMatch.similarity,
-                        tailSimilarity: tailMatch.similarity
-                    };
+                // 根据模式检测头部相同部分
+                if (mode === 'auto' || mode === 'head_only') {
+                    const headOverlap = this.findHeadOverlap(firstImage, lastImage, threshold, range);
+                    if (headOverlap) {
+                        info.hasSameHead = true;
+                        info.headHeight = headOverlap.height;
+                        info.totalOverlaps++;
+                    }
                 }
-                
-                return null;
+
+                // 根据模式检测尾部相同部分
+                if (mode === 'auto' || mode === 'tail_only') {
+                    const tailOverlap = this.findTailOverlap(firstImage, lastImage, threshold, range);
+                    if (tailOverlap) {
+                        info.hasSameTail = true;
+                        info.tailHeight = tailOverlap.height;
+                        info.totalOverlaps++;
+                    }
+                }
+
+                // 检测中间图片的重合部分
+                for (let i = 0; i < images.length - 1; i++) {
+                    const currentImage = images[i].image;
+                    const nextImage = images[i + 1].image;
+                    
+                    const overlap = this.findMiddleOverlap(currentImage, nextImage, threshold);
+                    if (overlap) {
+                        info.totalOverlaps++;
+                        info.details.push({
+                            index: i,
+                            overlapHeight: overlap.height,
+                            overlapType: 'middle'
+                        });
+                    }
+                }
+
+                return info;
             }
 
-            findHeadMatch(img1Data, img2Data, threshold) {
-                const maxHeadHeight = Math.min(img1Data.height, img2Data.height) * 0.3; // 最多检测30%的头部
+            findHeadOverlap(img1, img2, threshold, range) {
+                const maxCheckHeight = Math.min(img1.height, img2.height) * range;
                 
-                for (let headHeight = 10; headHeight <= maxHeadHeight; headHeight += 2) {
-                    const similarity = this.calculateSimilarity(
-                        img1Data, 
-                        img2Data, 
-                        0, 
-                        headHeight,
-                        0,
-                        headHeight
+                for (let height = 10; height <= maxCheckHeight; height += 5) {
+                    const similarity = this.calculateRegionSimilarity(
+                        img1, img2, 
+                        0, 0, img1.width, height,
+                        0, 0, img2.width, height
                     );
                     
                     if (similarity >= threshold) {
-                        return {
-                            height: headHeight,
-                            similarity: similarity
-                        };
+                        return { height: height };
                     }
                 }
                 
                 return null;
             }
 
-            findTailMatch(img1Data, img2Data, threshold) {
-                const maxTailHeight = Math.min(img1Data.height, img2Data.height) * 0.3; // 最多检测30%的尾部
+            findTailOverlap(img1, img2, threshold, range) {
+                const maxCheckHeight = Math.min(img1.height, img2.height) * range;
                 
-                for (let tailHeight = 10; tailHeight <= maxTailHeight; tailHeight += 2) {
-                    const similarity = this.calculateSimilarity(
-                        img1Data, 
-                        img2Data, 
-                        img1Data.height - tailHeight, 
-                        tailHeight,
-                        img2Data.height - tailHeight,
-                        tailHeight
+                for (let height = 10; height <= maxCheckHeight; height += 5) {
+                    const similarity = this.calculateRegionSimilarity(
+                        img1, img2,
+                        0, img1.height - height, img1.width, height,
+                        0, img2.height - height, img2.width, height
                     );
                     
                     if (similarity >= threshold) {
-                        return {
-                            height: tailHeight,
-                            similarity: similarity
-                        };
+                        return { height: height };
                     }
                 }
                 
                 return null;
+            }
+
+            findMiddleOverlap(img1, img2, threshold) {
+                const maxCheckHeight = Math.min(img1.height, img2.height) * 0.4;
+                
+                for (let height = 10; height <= maxCheckHeight; height += 5) {
+                    // 检查img1底部与img2顶部的重合
+                    const similarity = this.calculateRegionSimilarity(
+                        img1, img2,
+                        0, img1.height - height, img1.width, height,
+                        0, 0, img2.width, height
+                    );
+                    
+                    if (similarity >= threshold) {
+                        return { height: height };
+                    }
+                }
+                
+                return null;
+            }
+
+            calculateRegionSimilarity(img1, img2, x1, y1, w1, h1, x2, y2, w2, h2) {
+                const canvas1 = document.createElement('canvas');
+                const ctx1 = canvas1.getContext('2d');
+                canvas1.width = w1;
+                canvas1.height = h1;
+                ctx1.drawImage(img1, x1, y1, w1, h1, 0, 0, w1, h1);
+                
+                const canvas2 = document.createElement('canvas');
+                const ctx2 = canvas2.getContext('2d');
+                canvas2.width = w2;
+                canvas2.height = h2;
+                ctx2.drawImage(img2, x2, y2, w2, h2, 0, 0, w2, h2);
+                
+                const data1 = ctx1.getImageData(0, 0, w1, h1);
+                const data2 = ctx2.getImageData(0, 0, w2, h2);
+                
+                const width = Math.min(w1, w2);
+                const height = Math.min(h1, h2);
+                
+                if (height <= 0) return 0;
+                
+                let totalDiff = 0;
+                let totalPixels = width * height;
+                const sampleStep = Math.max(1, Math.floor(totalPixels / 5000));
+                let sampledPixels = 0;
+                
+                for (let y = 0; y < height; y += sampleStep) {
+                    for (let x = 0; x < width; x += sampleStep) {
+                        const idx1 = (y * w1 + x) * 4;
+                        const idx2 = (y * w2 + x) * 4;
+                        
+                        const diffR = Math.abs(data1.data[idx1] - data2.data[idx2]);
+                        const diffG = Math.abs(data1.data[idx1 + 1] - data2.data[idx2 + 1]);
+                        const diffB = Math.abs(data1.data[idx1 + 2] - data2.data[idx2 + 2]);
+                        
+                        totalDiff += (diffR + diffG + diffB) / 3;
+                        sampledPixels++;
+                    }
+                }
+                
+                if (sampledPixels === 0) return 0;
+                
+                const averageDiff = totalDiff / sampledPixels;
+                return 1 - (averageDiff / 255);
+            }
+
+            stitchMiddleContent(images, headTailInfo, detectionRange, similarityThreshold) {
+                let resultCanvas = document.createElement('canvas');
+                let resultCtx = resultCanvas.getContext('2d');
+                
+                // 从第一张图片开始，去除头部相同部分
+                let currentImage = images[0].image;
+                const startY = headTailInfo.hasSameHead ? headTailInfo.headHeight : 0;
+                const startHeight = currentImage.height - startY - (headTailInfo.hasSameTail ? headTailInfo.tailHeight : 0);
+                
+                resultCanvas.width = currentImage.width;
+                resultCanvas.height = startHeight;
+                resultCtx.drawImage(currentImage, 0, startY, currentImage.width, startHeight, 0, 0, currentImage.width, startHeight);
+                
+                // 拼接中间图片
+                for (let i = 1; i < images.length - 1; i++) {
+                    const nextImage = images[i].image;
+                    
+                    // 检测重叠区域
+                    const overlap = this.findOverlap(resultCanvas, nextImage, detectionRange, similarityThreshold);
+                    
+                    if (overlap) {
+                        const newCanvas = document.createElement('canvas');
+                        const newCtx = newCanvas.getContext('2d');
+                        
+                        newCanvas.width = Math.max(resultCanvas.width, nextImage.width);
+                        newCanvas.height = resultCanvas.height + nextImage.height - overlap.height;
+                        
+                        newCtx.drawImage(resultCanvas, 0, 0);
+                        newCtx.drawImage(
+                            nextImage, 
+                            0, overlap.top, nextImage.width, nextImage.height - overlap.top,
+                            0, resultCanvas.height, nextImage.width, nextImage.height - overlap.top
+                        );
+                        
+                        resultCanvas = newCanvas;
+                        resultCtx = newCtx;
+                    } else {
+                        const newCanvas = document.createElement('canvas');
+                        const newCtx = newCanvas.getContext('2d');
+                        
+                        newCanvas.width = Math.max(resultCanvas.width, nextImage.width);
+                        newCanvas.height = resultCanvas.height + nextImage.height;
+                        
+                        newCtx.drawImage(resultCanvas, 0, 0);
+                        newCtx.drawImage(nextImage, 0, resultCanvas.height);
+                        
+                        resultCanvas = newCanvas;
+                        resultCtx = newCtx;
+                    }
+                }
+                
+                // 添加最后一张图片的中间部分
+                if (images.length > 1) {
+                    const lastImage = images[images.length - 1].image;
+                    const lastStartY = headTailInfo.hasSameHead ? headTailInfo.headHeight : 0;
+                    const lastStartHeight = lastImage.height - lastStartY - (headTailInfo.hasSameTail ? headTailInfo.tailHeight : 0);
+                    
+                    const overlap = this.findOverlap(resultCanvas, lastImage, detectionRange, similarityThreshold);
+                    
+                    if (overlap) {
+                        const newCanvas = document.createElement('canvas');
+                        const newCtx = newCanvas.getContext('2d');
+                        
+                        newCanvas.width = Math.max(resultCanvas.width, lastImage.width);
+                        newCanvas.height = resultCanvas.height + lastStartHeight - overlap.height;
+                        
+                        newCtx.drawImage(resultCanvas, 0, 0);
+                        newCtx.drawImage(
+                            lastImage, 
+                            0, lastStartY, lastImage.width, lastStartHeight - overlap.height,
+                            0, resultCanvas.height, lastImage.width, lastStartHeight - overlap.height
+                        );
+                        
+                        resultCanvas = newCanvas;
+                        resultCtx = newCtx;
+                    } else {
+                        const newCanvas = document.createElement('canvas');
+                        const newCtx = newCanvas.getContext('2d');
+                        
+                        newCanvas.width = Math.max(resultCanvas.width, lastImage.width);
+                        newCanvas.height = resultCanvas.height + lastStartHeight;
+                        
+                        newCtx.drawImage(resultCanvas, 0, 0);
+                        newCtx.drawImage(lastImage, 0, lastStartY, lastImage.width, lastStartHeight, 0, resultCanvas.height, lastImage.width, lastStartHeight);
+                        
+                        resultCanvas = newCanvas;
+                        resultCtx = newCtx;
+                    }
+                }
+                
+                return resultCanvas;
+            }
+
+            addOriginalHeadTail(middleCanvas, images, headTailInfo) {
+                const firstImage = images[0].image;
+                const lastImage = images[images.length - 1].image;
+                
+                const finalCanvas = document.createElement('canvas');
+                const finalCtx = finalCanvas.getContext('2d');
+                
+                let totalHeight = middleCanvas.height;
+                let maxWidth = middleCanvas.width;
+                
+                // 计算最终尺寸
+                if (headTailInfo.hasSameHead) {
+                    totalHeight += headTailInfo.headHeight;
+                    maxWidth = Math.max(maxWidth, firstImage.width);
+                }
+                if (headTailInfo.hasSameTail) {
+                    totalHeight += headTailInfo.tailHeight;
+                    maxWidth = Math.max(maxWidth, lastImage.width);
+                }
+                
+                finalCanvas.width = maxWidth;
+                finalCanvas.height = totalHeight;
+                
+                let currentY = 0;
+                
+                // 添加原始头部
+                if (headTailInfo.hasSameHead) {
+                    finalCtx.drawImage(firstImage, 0, 0, firstImage.width, headTailInfo.headHeight, 0, 0, firstImage.width, headTailInfo.headHeight);
+                    currentY = headTailInfo.headHeight;
+                }
+                
+                // 添加中间内容
+                finalCtx.drawImage(middleCanvas, 0, currentY);
+                currentY += middleCanvas.height;
+                
+                // 添加原始尾部
+                if (headTailInfo.hasSameTail) {
+                    const tailY = lastImage.height - headTailInfo.tailHeight;
+                    finalCtx.drawImage(lastImage, 0, tailY, lastImage.width, headTailInfo.tailHeight, 0, currentY, lastImage.width, headTailInfo.tailHeight);
+                }
+                
+                return finalCanvas;
             }
 
             findOverlap(canvas1, image2, detectionRange, threshold) {
@@ -1000,14 +1244,7 @@
                 return 1 - (averageDiff / 255);
             }
 
-            previewStitch() {
-                if (this.images.length < 2) {
-                    this.showMessage('至少需要2张图片才能预览', 'error');
-                    return;
-                }
 
-                this.showMessage('预览功能开发中...', 'success');
-            }
 
             showResult(result, processTime) {
                 const resultSection = document.getElementById('resultSection');
@@ -1015,20 +1252,74 @@
                 const resultSize = document.getElementById('resultSize');
                 const stitchCount = document.getElementById('stitchCount');
                 const processTimeEl = document.getElementById('processTime');
-                const headTailCount = document.getElementById('headTailCount');
                 const overlapCount = document.getElementById('overlapCount');
                 
                 resultImage.src = result.canvas.toDataURL('image/jpeg', parseFloat(document.getElementById('outputQuality').value));
                 resultSize.textContent = `${result.canvas.width} × ${result.canvas.height}`;
                 stitchCount.textContent = result.stitchCount;
                 processTimeEl.textContent = `${processTime}ms`;
-                headTailCount.textContent = result.headTailCount;
                 overlapCount.textContent = result.overlapCount;
+                
+                // 显示头尾检测信息
+                if (result.headTailInfo) {
+                    this.showHeadTailInfo(result.headTailInfo);
+                }
                 
                 resultSection.style.display = 'block';
                 resultSection.scrollIntoView({ behavior: 'smooth' });
                 
                 this.resultCanvas = result.canvas;
+            }
+
+            showHeadTailInfo(headTailInfo) {
+                // 在结果统计区域添加头尾检测信息
+                const resultStats = document.querySelector('.result-stats');
+                
+                // 创建头尾检测信息元素
+                const headTailStat = document.createElement('div');
+                headTailStat.className = 'stat-item';
+                headTailStat.innerHTML = `
+                    <div class="stat-label">头尾检测</div>
+                    <div class="stat-value">${this.getHeadTailText(headTailInfo)}</div>
+                `;
+                
+                // 如果已经有头尾检测信息，则替换；否则添加
+                const existingHeadTail = resultStats.querySelector('.head-tail-stat');
+                if (existingHeadTail) {
+                    existingHeadTail.remove();
+                }
+                headTailStat.classList.add('head-tail-stat');
+                resultStats.appendChild(headTailStat);
+                
+                // 显示详细信息
+                let infoText = '';
+                if (headTailInfo.hasSameHead) {
+                    infoText += `头部相同: ${headTailInfo.headHeight}px\n`;
+                }
+                if (headTailInfo.hasSameTail) {
+                    infoText += `尾部相同: ${headTailInfo.tailHeight}px\n`;
+                }
+                if (headTailInfo.details.length > 0) {
+                    infoText += `中间重合: ${headTailInfo.details.length}处`;
+                }
+                
+                if (infoText) {
+                    this.showMessage(`检测结果:\n${infoText}`, 'success');
+                }
+            }
+
+            getHeadTailText(headTailInfo) {
+                let text = '';
+                if (headTailInfo.hasSameHead && headTailInfo.hasSameTail) {
+                    text = '头尾相同';
+                } else if (headTailInfo.hasSameHead) {
+                    text = '头部相同';
+                } else if (headTailInfo.hasSameTail) {
+                    text = '尾部相同';
+                } else {
+                    text = '无相同';
+                }
+                return text;
             }
 
             downloadResult() {
